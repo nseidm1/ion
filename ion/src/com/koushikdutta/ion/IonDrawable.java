@@ -54,12 +54,12 @@ public class IonDrawable extends Drawable {
 
     @Override
     public int getIntrinsicWidth() {
-        return width;
+        return -1;
     }
 
     @Override
     public int getIntrinsicHeight() {
-        return height;
+        return -1;
     }
 
     public IonDrawable setScaleMode(IonBitmapRequestBuilder.ScaleMode scaleMode) {
@@ -75,7 +75,6 @@ public class IonDrawable extends Drawable {
     public void draw(Canvas canvas) {
         if (bitmap == null)
             return;
-
 
         if (scaleMode == IonBitmapRequestBuilder.ScaleMode.CenterCrop) {
             Rect bounds = getBounds();
@@ -114,10 +113,25 @@ public class IonDrawable extends Drawable {
 
             canvas.drawBitmap(bitmap, drawBounds, bounds, paint);
         }
-        else {
+        else if (scaleMode == IonBitmapRequestBuilder.ScaleMode.CenterInside) {
+            Rect bounds = getBounds();
+            float xratio = (float)bounds.width() / (float)bitmap.getWidth();
+            float yratio = (float)bounds.height() / (float)bitmap.getHeight();
 
+            float ratio = Math.min(xratio, yratio);
+
+            int newWidth = (int)(ratio * bitmap.getWidth());
+            int newHeight = (int)(ratio * bitmap.getHeight());
+
+            int clipx = (bounds.width() - newWidth) >> 1;
+            int clipy = (bounds.height() - newHeight) >> 1;
+
+            drawBounds.set(clipx, clipy, bounds.width() - clipx, bounds.height() - clipy);
+            canvas.drawBitmap(bitmap, null, drawBounds, paint);
         }
-
+        else {
+            canvas.drawBitmap(bitmap, null, getBounds(), paint);
+        }
     }
 
     @Override

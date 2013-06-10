@@ -10,6 +10,9 @@ public interface IonMutableBitmapRequestPostLoadBuilder extends IonMutableBitmap
     public IonMutableBitmapRequestPostLoadBuilder transform(Transform transform);
 
     /** {@inheritDoc} */
+    public IonMutableBitmapRequestPostLoadBuilder resize(int width, int height);
+
+    /** {@inheritDoc} */
     public IonMutableBitmapRequestPostLoadBuilder centerCrop();
 
     /** {@inheritDoc} */

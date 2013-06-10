@@ -14,6 +14,14 @@ public interface IonMutableBitmapRequestBuilder {
     public IonMutableBitmapRequestBuilder transform(Transform transform);
 
     /**
+     * Resize the bitmap to the given dimensions.
+     * @param width
+     * @param height
+     * @return
+     */
+    public IonMutableBitmapRequestBuilder resize(int width, int height);
+
+    /**
      * Center the image inside of the bounds specified by the ImageView or resize
      * operation. This will scale the image so that it fills the bounds, and crops
      * the extra.

@@ -9,6 +9,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Looper;
 import android.text.TextUtils;
+import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
@@ -213,17 +214,22 @@ class IonBitmapRequestBuilder implements IonMutableBitmapRequestPreLoadBuilder, 
 
         IonDrawable ret;
         if (current == null || !(current instanceof IonDrawable)) {
-            ret = new IonDrawable(imageView.getResources(), null);
+            ret = new IonDrawable();
         }
         else {
             ret = (IonDrawable)current;
-            ret.setDensity(imageView.getResources().getDisplayMetrics().densityDpi);
         }
 
-        ret.setBitmap(bitmap);
+        int w = resizeWidth;
+        int h = resizeHeight;
+        if (w == 0 || h == 0) {
+            int density = imageView.getResources().getDisplayMetrics().densityDpi;
+            w = bitmap.getScaledWidth(density);
+            h = bitmap.getScaledHeight(density);
+        }
+
+        ret.setBitmap(bitmap, w, h);
         ret.setScaleMode(scaleMode);
-        if (scaleMode == ScaleMode.CenterCrop)
-            ret.setIntrinsicDimensions(imageView.getMeasuredWidth(), imageView.getMeasuredHeight());
 
         imageView.setImageDrawable(ret);
     }
@@ -456,13 +462,27 @@ class IonBitmapRequestBuilder implements IonMutableBitmapRequestPreLoadBuilder, 
 
     @Override
     public IonBitmapRequestBuilder centerCrop() {
+        if (resizeWidth == 0 || resizeHeight == 0)
+            throw new IllegalStateException("must call resize first");
         scaleMode = ScaleMode.CenterCrop;
         return this;
     }
 
     @Override
     public IonBitmapRequestBuilder centerInside() {
+        if (resizeWidth == 0 || resizeHeight == 0)
+            throw new IllegalStateException("must call resize first");
         scaleMode = ScaleMode.CenterInside;
+        return this;
+    }
+
+    int resizeWidth;
+    int resizeHeight;
+
+    @Override
+    public IonBitmapRequestBuilder resize(int width, int height) {
+        resizeWidth = width;
+        resizeHeight = height;
         return this;
     }
 
@@ -480,5 +500,7 @@ class IonBitmapRequestBuilder implements IonMutableBitmapRequestPreLoadBuilder, 
         loadAnimation = null;
         loadAnimationResource = 0;
         scaleMode = ScaleMode.CenterInside;
+        resizeWidth = 0;
+        resizeHeight = 0;
     }
 }

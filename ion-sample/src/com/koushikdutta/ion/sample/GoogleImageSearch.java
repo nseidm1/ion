@@ -49,6 +49,7 @@ public class GoogleImageSearch extends Activity {
 
             // select the image view
             Ion.with(iv)
+            .resize(getResources().getDisplayMetrics().widthPixels, getResources().getDisplayMetrics().widthPixels)
             .centerCrop()
             // fade in on load
             .animateIn(R.anim.fadein)

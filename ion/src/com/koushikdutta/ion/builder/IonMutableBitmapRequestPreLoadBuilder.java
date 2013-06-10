@@ -10,6 +10,9 @@ public interface IonMutableBitmapRequestPreLoadBuilder extends IonMutableBitmapR
     public IonMutableBitmapRequestPreLoadBuilder transform(Transform transform);
 
     /** {@inheritDoc} */
+    public IonMutableBitmapRequestPreLoadBuilder resize(int width, int height);
+
+    /** {@inheritDoc} */
     public IonMutableBitmapRequestPreLoadBuilder centerCrop();
 
     /** {@inheritDoc} */

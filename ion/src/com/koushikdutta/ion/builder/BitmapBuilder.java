@@ -5,13 +5,13 @@ import com.koushikdutta.ion.bitmap.Transform;
 /**
 * Created by koush on 5/30/13.
 */
-public interface IonMutableBitmapRequestBuilder {
+public interface BitmapBuilder<B extends BitmapBuilder> {
     /**
      * Apply a transformation to a Bitmap
      * @param transform Transform to apply
      * @return
      */
-    public IonMutableBitmapRequestBuilder transform(Transform transform);
+    public B transform(Transform transform);
 
     /**
      * Resize the bitmap to the given dimensions.
@@ -19,7 +19,7 @@ public interface IonMutableBitmapRequestBuilder {
      * @param height
      * @return
      */
-    public IonMutableBitmapRequestBuilder resize(int width, int height);
+    public B resize(int width, int height);
 
     /**
      * Center the image inside of the bounds specified by the ImageView or resize
@@ -27,7 +27,7 @@ public interface IonMutableBitmapRequestBuilder {
      * the extra.
      * @return
      */
-    public IonMutableBitmapRequestBuilder centerCrop();
+    public B centerCrop();
 
     /**
      * Center the image inside of the bounds specified by the ImageView or resize
@@ -35,5 +35,5 @@ public interface IonMutableBitmapRequestBuilder {
      * bounds.
      * @return
      */
-    public IonMutableBitmapRequestBuilder centerInside();
+    public B centerInside();
 }

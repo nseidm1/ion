@@ -1,15 +1,9 @@
 package com.koushikdutta.ion;
 
-import java.io.ByteArrayInputStream;
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Looper;
-import android.text.TextUtils;
-import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
@@ -22,17 +16,19 @@ import com.koushikdutta.async.future.SimpleFuture;
 import com.koushikdutta.async.future.TransformFuture;
 import com.koushikdutta.async.parser.ByteBufferListParser;
 import com.koushikdutta.ion.bitmap.Transform;
-import com.koushikdutta.ion.builder.IonImageViewRequestBuilder;
-import com.koushikdutta.ion.builder.IonImageViewRequestPostLoadBuilder;
-import com.koushikdutta.ion.builder.IonImageViewRequestPreLoadBuilder;
-import com.koushikdutta.ion.builder.IonMutableBitmapRequestBuilder;
-import com.koushikdutta.ion.builder.IonMutableBitmapRequestPreLoadBuilder;
-import com.koushikdutta.ion.builder.IonMutableBitmapRequestPostLoadBuilder;
+import com.koushikdutta.ion.builder.BitmapFutureBuilder;
+import com.koushikdutta.ion.builder.Builders;
+import com.koushikdutta.ion.builder.ImageViewFutureBuilder;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 
 /**
  * Created by koush on 5/23/13.
  */
-class IonBitmapRequestBuilder implements IonMutableBitmapRequestPreLoadBuilder, IonMutableBitmapRequestPostLoadBuilder, IonImageViewRequestPreLoadBuilder, IonImageViewRequestPostLoadBuilder {
+class IonBitmapRequestBuilder implements Builders.ImageView.F, ImageViewFutureBuilder, BitmapFutureBuilder {
     IonRequestBuilder builder;
     Ion ion;
 
@@ -97,21 +93,20 @@ class IonBitmapRequestBuilder implements IonMutableBitmapRequestPreLoadBuilder, 
         }
     }
 
-    class ByteBufferListToBitmap extends BitmapHandler implements FutureCallback<ByteBufferList> {
-        public ByteBufferListToBitmap(String urlKey) {
+    class ByteArrayOutputStreamToBitmap extends BitmapHandler implements FutureCallback<ByteArrayOutputStream> {
+        public ByteArrayOutputStreamToBitmap(String urlKey) {
             super(urlKey);
         }
 
         @Override
-        public void onCompleted(Exception e, ByteBufferList result) {
+        public void onCompleted(Exception e, ByteArrayOutputStream result) {
             if (e != null) {
                 report(e, null);
                 return;
             }
 
 //            builder.request.logd("Image file size: " + result.remaining());
-            final ByteArrayInputStream bin = new ByteArrayInputStream(result.getAllByteArray());
-            result.clear();
+            final ByteArrayInputStream bin = new ByteArrayInputStream(result.toByteArray());
 
             ion.executorService.execute(new Runnable() {
                 @Override
@@ -182,13 +177,14 @@ class IonBitmapRequestBuilder implements IonMutableBitmapRequestPreLoadBuilder, 
 
         // find/create the future for this download.
         if (!ion.bitmapsPending.contains(builder.uri)) {
-            builder.execute(new ByteBufferListParser()).setCallback(new ByteBufferListToBitmap(builder.uri));
+            builder.write(new ByteArrayOutputStream()).setCallback(new ByteArrayOutputStreamToBitmap(builder.uri));
         }
 
-        // if the transform key and uri key aren't the same, and the transform isn't already queue, queue it
-        if (!TextUtils.equals(builder.uri, bitmapKey) && !ion.bitmapsPending.contains(bitmapKey)) {
-            ion.bitmapsPending.add(builder.uri, new BitmapToBitmap(bitmapKey));
-        }
+        // if there's a transform, do it
+        if (transforms == null || transforms.size() == 0)
+            return null;
+
+        ion.bitmapsPending.add(builder.uri, new BitmapToBitmap(bitmapKey));
 
         return null;
     }
@@ -234,12 +230,18 @@ class IonBitmapRequestBuilder implements IonMutableBitmapRequestPreLoadBuilder, 
         imageView.setImageDrawable(ret);
     }
 
+    int executeCount;
     SimpleFuture<ImageView> imageViewFuture;
     @Override
     public Future<ImageView> intoImageView(ImageView imageView) {
         if (imageView == null)
             throw new IllegalArgumentException("imageView");
         assert Thread.currentThread() == Looper.getMainLooper().getThread();
+
+        // tag this load with an id so that when the execute completes,
+        // we know if the image view is still serving the same request.
+        executeCount++;
+        final int loadingExecuteCount = executeCount;
 
         imageView.setTag(this);
 
@@ -257,14 +259,12 @@ class IonBitmapRequestBuilder implements IonMutableBitmapRequestPreLoadBuilder, 
 
         // execute the request, see if we get a bitmap from cache.
         Bitmap bitmap = execute();
-        // note what this imageview is attached to
         if (bitmap != null) {
             setIonDrawable(imageView, bitmap);
             doAnimation(imageView, null, 0);
             imageViewFuture.setComplete(imageView);
             return imageViewFuture;
         }
-        final String loadingBitmapKey = bitmapKey;
 
         // set the placeholder since we're loading
         setPlaceholder(imageView);
@@ -278,7 +278,7 @@ class IonBitmapRequestBuilder implements IonMutableBitmapRequestPreLoadBuilder, 
             iv = new WeakReference<ImageView>(imageView);
 
         // get a child future that can be used to set the ImageView once the drawable is ready
-        ion.bitmapsPending.add(loadingBitmapKey, new FutureCallback<Bitmap>() {
+        ion.bitmapsPending.add(bitmapKey, new FutureCallback<Bitmap>() {
             @Override
             public void onCompleted(final Exception e, Bitmap source) {
                 assert Thread.currentThread() == Looper.getMainLooper().getThread();
@@ -293,7 +293,7 @@ class IonBitmapRequestBuilder implements IonMutableBitmapRequestPreLoadBuilder, 
                     return;
 
                 // see if the ImageView is still waiting for the same transform key as before
-                if (!TextUtils.equals(loadingBitmapKey, IonBitmapRequestBuilder.this.bitmapKey))
+                if (loadingExecuteCount != executeCount)
                     return;
 
                 if (e != null) {

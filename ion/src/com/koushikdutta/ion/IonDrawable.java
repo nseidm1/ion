@@ -109,8 +109,6 @@ public class IonDrawable extends Drawable {
 
             drawBounds.set(clipx, clipy, bitmap.getWidth() - clipx, bitmap.getHeight() - clipy);
 
-            assert bounds.width() == 1080 && bounds.height() == 1080;
-
             canvas.drawBitmap(bitmap, drawBounds, bounds, paint);
         }
         else if (scaleMode == IonBitmapRequestBuilder.ScaleMode.CenterInside) {

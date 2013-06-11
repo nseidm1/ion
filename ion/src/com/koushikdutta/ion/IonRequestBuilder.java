@@ -559,7 +559,7 @@ class IonRequestBuilder implements Builders.Any.B, Builders.Any.F, Builders.Any.
 
     @Override
     public IonRequestBuilder basicAuthentication(String username, String password) {
-        return setHeader("Authorization", Base64.encodeToString(String.format("%s:%s", username, password).getBytes(), Base64.DEFAULT));
+        return setHeader("Authorization", "Basic " + Base64.encodeToString(String.format("%s:%s", username, password).getBytes(), Base64.NO_WRAP));
     }
 
     void reset() {

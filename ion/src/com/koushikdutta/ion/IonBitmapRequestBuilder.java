@@ -21,7 +21,6 @@ import com.koushikdutta.ion.builder.Builders;
 import com.koushikdutta.ion.builder.ImageViewFutureBuilder;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
@@ -65,15 +64,15 @@ class IonBitmapRequestBuilder implements Builders.ImageView.F, ImageViewFutureBu
         return this;
     }
 
-    class BitmapHandler {
+    class BitmapCallback {
         String key;
 
-        public BitmapHandler(String key) {
+        public BitmapCallback(String key) {
             this.key = key;
         }
 
         void report(final Exception e, final Bitmap result) {
-            AsyncServer.post(builder.handler, new Runnable() {
+            AsyncServer.post(IonRequestBuilder.mainHandler, new Runnable() {
                 @Override
                 public void run() {
                     if (result != null)
@@ -93,25 +92,25 @@ class IonBitmapRequestBuilder implements Builders.ImageView.F, ImageViewFutureBu
         }
     }
 
-    class ByteArrayOutputStreamToBitmap extends BitmapHandler implements FutureCallback<ByteArrayOutputStream> {
-        public ByteArrayOutputStreamToBitmap(String urlKey) {
+    class LoadBitmap extends BitmapCallback implements FutureCallback<ByteBufferList> {
+        public LoadBitmap(String urlKey) {
             super(urlKey);
         }
 
         @Override
-        public void onCompleted(Exception e, ByteArrayOutputStream result) {
+        public void onCompleted(Exception e, final ByteBufferList result) {
             if (e != null) {
                 report(e, null);
                 return;
             }
 
 //            builder.request.logd("Image file size: " + result.remaining());
-            final ByteArrayInputStream bin = new ByteArrayInputStream(result.toByteArray());
 
-            ion.executorService.execute(new Runnable() {
+            ion.getServer().getExecutorService().execute(new Runnable() {
                 @Override
                 public void run() {
                     try {
+                        final ByteArrayInputStream bin = new ByteArrayInputStream(result.getAllByteArray());
                         Bitmap bmp = ion.bitmapCache.loadBitmapFromStream(bin);
                         if (bmp == null)
                             throw new Exception("bitmap failed to load");
@@ -125,7 +124,7 @@ class IonBitmapRequestBuilder implements Builders.ImageView.F, ImageViewFutureBu
         }
     }
 
-    class BitmapToBitmap extends BitmapHandler implements FutureCallback<Bitmap> {
+    class BitmapToBitmap extends BitmapCallback implements FutureCallback<Bitmap> {
         public BitmapToBitmap(String transformKey) {
             super(transformKey);
         }
@@ -137,7 +136,7 @@ class IonBitmapRequestBuilder implements Builders.ImageView.F, ImageViewFutureBu
                 return;
             }
 
-            ion.executorService.execute(new Runnable() {
+            ion.getServer().getExecutorService().execute(new Runnable() {
                 @Override
                 public void run() {
                     try {
@@ -177,7 +176,8 @@ class IonBitmapRequestBuilder implements Builders.ImageView.F, ImageViewFutureBu
 
         // find/create the future for this download.
         if (!ion.bitmapsPending.contains(builder.uri)) {
-            builder.write(new ByteArrayOutputStream()).setCallback(new ByteArrayOutputStreamToBitmap(builder.uri));
+            builder.setHandler(null);
+            builder.execute(new ByteBufferListParser()).setCallback(new LoadBitmap(builder.uri));
         }
 
         // if there's a transform, do it

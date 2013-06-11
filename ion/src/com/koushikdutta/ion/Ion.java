@@ -340,8 +340,6 @@ public class Ion {
         return config;
     }
 
-    ExecutorService executorService = Executors.newFixedThreadPool(3);
-
     HashList<FutureCallback<Bitmap>> bitmapsPending = new HashList<FutureCallback<Bitmap>>();
 
     IonBitmapCache bitmapCache;

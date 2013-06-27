@@ -31,13 +31,8 @@ class LoadBitmap extends BitmapCallback implements FutureCallback<ByteBufferList
         ion.getServer().getExecutorService().execute(new Runnable() {
             @Override
             public void run() {
-                ByteBuffer bb = null;
+                ByteBuffer bb = result.getAll();
                 try {
-                	if (result.size() == 0)
-                		throw new Exception("Bitmap failed to download");
-
-                	bb = result.getAll();
-                	
                     Bitmap bitmap = ion.bitmapCache.loadBitmap(bb.array(), bb.arrayOffset() + bb.position(), bb.remaining(), resizeWidth, resizeHeight);
 
                     if (bitmap == null)
@@ -53,8 +48,7 @@ class LoadBitmap extends BitmapCallback implements FutureCallback<ByteBufferList
                     report(e, null);
                 }
                 finally {
-                	if (bb != null)
-                		ByteBufferList.reclaim(bb);
+                    ByteBufferList.reclaim(bb);
                 }
             }
         });
